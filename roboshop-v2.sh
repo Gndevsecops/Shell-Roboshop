@@ -5,7 +5,6 @@
 AMI_ID="ami-0220d79f3f480ecf5"
 ZONE_ID="Z01935802ILD7QQWZXDDI" # replace with your zone ID
 DOMAIN_NAME="gnyadav.shop" # replace with your domain name
-
 R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
@@ -41,7 +40,7 @@ do
             INSTANCE_ID=$( aws ec2 run-instances \
             --image-id $AMI_ID \
             --instance-type t3.micro \
-            --security-groups "Roboshop-common" "roboshop-$instance" \
+            --security-groups "roboshop-common" "roboshop-$instance" \
             --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]" \
             --query 'Instances[0].InstanceId' \
             --output text 
