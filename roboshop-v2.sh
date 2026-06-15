@@ -18,16 +18,16 @@ if [ $# -lt 2 ]; then
     exit 1
 fi
 
-Action =$1
-Shift # first argument will be removed
+ACTION=$1
+shift # first argument will be removed
 
 if [ "$ACTION" != "create" ] && [ "$ACTION" != "delete" ]; then
     echo -e "$R ERROR:: First argument must be either create or delete $N"
     echo "USAGE: $0 [create/delete] [instance1] [instance2...]"
     exit 1
 fi
- 
-   get_instance_id(){
+
+get_instance_id(){
     name=$1
     aws ec2 describe-instances --filters "Name=tag:Name,Values=roboshop-$name" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[0].InstanceId" --output text
 }
@@ -115,4 +115,3 @@ done
 #   - If create and instance is stopped, start it instead of launching new
 #   - If delete and instance is stopped, terminate it and delete R53 record
 #   - If delete and instance is running, terminate it and delete R53 record
-
