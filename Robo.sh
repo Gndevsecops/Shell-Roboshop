@@ -1,81 +1,82 @@
 #!/bin/bash
 
 AMI_ID="ami-0220d79f3f480ecf5"
-ZONE_ID="YOUR_ZONE_ID"
-DOMAIN_NAME="yourdomain.shop"
+ZONE_ID="Z01935802ILD7QQWZXDDI"
+DOMAIN_NAME="gnyadav.shop"
 
 R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
 N="\e[0m"
 
-# Validation
-
 if [ $# -lt 2 ]; then
-echo -e "${R}ERROR: Minimum 2 arguments required${N}"
-echo "Usage: $0 [create|delete] [component1] [component2]"
-exit 1
+    echo -e "${R}ERROR: Minimum 2 arguments required${N}"
+    echo "Usage: $0 [create|delete] [component1] [component2]"
+    exit 1
 fi
 
 ACTION=$1
 shift
 
+if [[ "$ACTION" != "create" && "$ACTION" != "delete" ]]; then
+    echo -e "${R}ERROR: First argument must be create or delete${N}"
+    exit 1
+fi
+
 get_instance_id() {
-COMPONENT=$1
+    local name=$1
 
-```
-aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=roboshop-$COMPONENT" \
-              "Name=instance-state-name,Values=running" \
-    --query "Reservations[0].Instances[0].InstanceId" \
-    --output text
-```
-
+    aws ec2 describe-instances \
+        --filters "Name=tag:Name,Values=roboshop-$name" \
+                  "Name=instance-state-name,Values=running" \
+        --query "Reservations[0].Instances[0].InstanceId" \
+        --output text
 }
 
-for COMPONENT in $@
+for instance in "$@"
 do
-INSTANCE_ID=$(get_instance_id $COMPONENT)
+    INSTANCE_ID=$(get_instance_id "$instance")
 
-```
-if [ "$ACTION" == "create" ]; then
+    if [[ "$ACTION" == "create" ]]; then
 
-    if [ "$INSTANCE_ID" == "None" ]; then
+        if [[ "$INSTANCE_ID" == "None" || -z "$INSTANCE_ID" ]]; then
 
-        echo "Launching roboshop-$COMPONENT"
+            echo "Launching Instance: roboshop-$instance"
 
-        INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id $AMI_ID \
-            --instance-type t3.micro \
-            --security-groups roboshop-common \
-            --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$COMPONENT}]" \
-            --query 'Instances[0].InstanceId' \
-            --output text)
+            INSTANCE_ID=$(aws ec2 run-instances \
+                --image-id "$AMI_ID" \
+                --instance-type t3.micro \
+                --security-groups roboshop-common \
+                --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=roboshop-$instance}]" \
+                --query 'Instances[0].InstanceId' \
+                --output text)
 
-        echo "Created Instance: $INSTANCE_ID"
+            if [ $? -ne 0 ]; then
+                echo -e "${R}Failed to create instance${N}"
+                exit 1
+            fi
 
-        aws ec2 wait instance-running \
-            --instance-ids $INSTANCE_ID
+            echo "Launched Instance: $INSTANCE_ID"
 
-        echo "Instance Running"
+            aws ec2 wait instance-running \
+                --instance-ids "$INSTANCE_ID"
+
+            echo "Instance is running: $INSTANCE_ID"
+
+        else
+            echo "roboshop-$instance already running: $INSTANCE_ID"
+        fi
 
     else
-        echo "roboshop-$COMPONENT already running: $INSTANCE_ID"
+
+        if [[ "$INSTANCE_ID" == "None" || -z "$INSTANCE_ID" ]]; then
+            echo "roboshop-$instance already destroyed"
+        else
+            aws ec2 terminate-instances \
+                --instance-ids "$INSTANCE_ID"
+
+            echo "Terminating Instance: roboshop-$instance"
+        fi
+
     fi
-
-elif [ "$ACTION" == "delete" ]; then
-
-    if [ "$INSTANCE_ID" == "None" ]; then
-        echo "roboshop-$COMPONENT already deleted"
-
-    else
-        aws ec2 terminate-instances \
-            --instance-ids $INSTANCE_ID
-
-        echo "Terminated roboshop-$COMPONENT"
-    fi
-
-fi
-```
-
 done
