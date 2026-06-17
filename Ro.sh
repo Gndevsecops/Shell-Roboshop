@@ -3,8 +3,8 @@
 #export PATH=$PATH:/usr/local/bin
 
 AMI_ID="ami-0220d79f3f480ecf5"
-ZONE_ID="Z07086101C1CVP7AT2UK4" # replace with your zone ID
-DOMAIN_NAME="daws90s.shop" # replace with your domain name
+ZONE_ID="Z01935802ILD7QQWZXDDI"
+DOMAIN_NAME="gnyadav.shop"
 R="\e[31m"
 G="\e[32m"
 Y="\e[33m"
@@ -100,17 +100,3 @@ do
         fi
     fi
 done
-
-# ================================================================
-# ASSIGNMENT 2 — roboshop-v3.sh (Handle stopped instances)
-# ================================================================
-
-# roboshop-v2.sh only checks for "running" instances.
-# A stopped instance is treated as non-existent — it gets re-created
-# instead of re-started, and on delete it is silently skipped.
-
-# Improve it so that:
-
-#   - If create and instance is stopped, start it instead of launching new
-#   - If delete and instance is stopped, terminate it and delete R53 record
-#   - If delete and instance is running, terminate it and delete R53 record
