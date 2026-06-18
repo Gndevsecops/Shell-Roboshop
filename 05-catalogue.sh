@@ -5,7 +5,6 @@ sudo mkdir -p $LOGS_FOLDER
 sudo chown -R ec2-user:ec2-user $LOGS_FOLDER
 sudo chmod -R 755 $LOGS_FOLDER
 LOGS_FILE="$LOGS_FOLDER/$0.log"
-SCRIPT_DIR=$PWD
 
 USERID=$(id -u)
 R="\e[31m"
@@ -28,54 +27,17 @@ VALIDATE(){
     fi
 }
 
-dnf module disable nodejs -y &>>$LOGS_FILE
-dnf module enable nodejs:20 -y  &>>$LOGS_FILE
-dnf install nodejs -y &>>$LOGS_FILE
-VALIDATE $? "Installing NodeJS:20"
+cp mongo.repo /etc/yum.repos.d/mongo.repo
+VALIDATE $? "Adding Mongo repo"
 
-id roboshop &>>$LOGS_FILE
-if [ $? -ne 0 ]; then
-    useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop &>>$LOGS_FILE
-    VALIDATE $? "Creating roboshop system user"
-else
-    echo -e "System user roboshop already created ... $Y SKIPPING $N"
-fi
+dnf install mongodb-org -y &>> $LOGS_FILE
+VALIDATE $? "Installing MongoDB"
 
-rm -rf /app
-VALIDATE $? "Removing existing code"
+systemctl enable --now mongod
+VALIDATE $? "Starting and enabling MongoDB"
 
-rm -rf /tmp/catalogue.zip
-VALIDATE $? "Removed catalogue zip"
+sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mongod.conf
+VALIDATE $? "Allowing remote connections to MongoDB"
 
-mkdir -p /app  &>>$LOGS_FILE
-VALIDATE $? "Creating app directory"
-
-curl -o /tmp/catalogue.zip https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip  &>>$LOGS_FILE
-cd /app 
-unzip /tmp/catalogue.zip &>>$LOGS_FILE
-VALIDATE $? "Downloaded and extracted catalogue code"
-
-npm install  &>>$LOGS_FILE
-VALIDATE $? "Installing dependencies"
-
-cp $SCRIPT_DIR/catalogue.service /etc/systemd/system/catalogue.service
-VALIDATE $? "Created systemctl service"
-
-cp $SCRIPT_DIR/mongo.repo /etc/yum.repos.d/mongo.repo
-VALIDATE $? "Added Mongo repo" 
-
-dnf install mongodb-mongosh -y &>>$LOGS_FILE
-VALIDATE $? "Installed MongoDB client"
-
-INDEX=$(mongosh --host mangodb.gnyadav.shop --eval 'db.getMongo().getDBNames().indexOf("catalogue")')
-
-if [ $INDEX -lt 0 ]; then
-    mongosh --host mangodb.gnyadav.shop </app/db/master-data.js &>>$LOGS_FILE
-    VALIDATE $? "Load Products"
-else
-    echo -e "Products already loaded ... $Y SKIPPING $N"
-fi
-
-systemctl enable catalogue &>>$LOGS_FILE
-systemctl restart catalogue &>>$LOGS_FILE
-VALIDATE $? "Restarting catalogue"
+systemctl restart mongod
+VALIDATE $? "Restarting MongoDB"
